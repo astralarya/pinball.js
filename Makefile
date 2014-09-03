@@ -39,3 +39,4 @@ build: $(MANIFEST)
 	makehtml --mode canvas -t . -o $(HTMLFILE) --code $(JSFILE) $(MAIN)
 
 debug:
+	makehtml --mode canvas-debug -t . -o $(DEBUGFILE) $(MAIN)
