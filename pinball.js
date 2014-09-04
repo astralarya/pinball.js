@@ -1,12 +1,62 @@
-/*{{ javascript("jslib/draw2d.js") }}*/
+/*{{ javascript("jslib/camera.js") }}*/
+/*{{ javascript("jslib/requesthandler.js") }}*/
+/*{{ javascript("jslib/texturemanager.js") }}*/
+/*{{ javascript("jslib/shadermanager.js") }}*/
+/*{{ javascript("jslib/effectmanager.js") }}*/
+/*{{ javascript("jslib/observer.js") }}*/
+/*{{ javascript("jslib/scene.js") }}*/
+/*{{ javascript("jslib/light.js") }}*/
+/*{{ javascript("jslib/material.js") }}*/
+/*{{ javascript("jslib/geometry.js") }}*/
+/*{{ javascript("jslib/aabbtree.js") }}*/
+/*{{ javascript("jslib/scenenode.js") }}*/
+/*{{ javascript("jslib/utilities.js") }}*/
+/*{{ javascript("jslib/vertexbuffermanager.js") }}*/
+/*{{ javascript("jslib/indexbuffermanager.js") }}*/
 
 TurbulenzEngine.onload = function onloadFn() {
-  // allocate resources
+  function errorCallback(msg) {
+    window.alert(msg);
+  };
+
+  // Engine devices
   var intervalID;
   var graphicsDeviceParameters = {};
   var graphicsDevice = TurbulenzEngine.createGraphicsDevice(graphicsDeviceParameters);
+  var mathDeviceParameters = {};
+  var mathDevice = TurbulenzEngine.createMathDevice(mathDeviceParameters);
   var inputDeviceParameters = {};
   var inputDevice = TurbulenzEngine.createInputDevice(inputDeviceParameters);
+  var physicsDeviceParameters = {};
+  var physicsDevice = TurbulenzEngine.createPhysicsDevice(physicsDeviceParameters);
+  var dynamicsWorldParameters = {};
+  var dynamicsWorld = physicsDevice.createDynamicsWorld(dynamicsWorldParameters);
+
+  var requestHandlerParameters = {};
+  var requestHandler = RequestHandler.create(requestHandlerParameters);
+  var textureManager = TextureManager.create(graphicsDevice, requestHandler, null, errorCallback);
+  var shaderManager = ShaderManager.create(graphicsDevice, requestHandler, null, errorCallback);
+  var effectManager = EffectManager.create();
+
+  var clearColor = mathDevice.v4Build(0.95, 0.95, 1.0, 1.0);
+  if (graphicsDevice.beginFrame()) {
+    graphicsDevice.clear(clearColor);
+    graphicsDevice.endFrame();
+  }
+
+  var renderer;
+
+  var scene = Scene.create(mathDevice);
+
+  // Create a camera with a 60 degree FOV
+  var camera = Camera.create(mathDevice);
+  var halfFov = Math.tan(30 * Math.PI / 180);
+  camera.recipViewWindowX = 1.0 / halfFov;
+  camera.recipViewWindowY = 1.0 / halfFov;
+  camera.updateProjectionMatrix();
+  var worldUp = mathDevice.v3BuildYAxis();
+  camera.lookAt(worldUp, worldUp, mathDevice.v3Build(0.0, 50.0, 200.0));
+  camera.updateViewMatrix();
 
   // state
   var state = { left: false, right: false };
@@ -30,61 +80,105 @@ TurbulenzEngine.onload = function onloadFn() {
   };
   inputDevice.addEventListener("keydown", keyDown);
 
-  // Draw scene
-  var draw2D = Draw2D.create({
-      graphicsDevice: graphicsDevice
+  // Objects
+  var boxShape = physicsDevice.createBoxShape({
+    halfExtents : [0.5, 0.5, 0.5],
+    margin : 0.001
   });
 
-  var bgColor = [0.0, 0.0, 0.0, 1.0];
-
-  var sprite = Draw2DSprite.create({
-      width: 100,
-      height: 100,
-      x: graphicsDevice.width / 2,
-      y: graphicsDevice.height / 2,
-      color: [0.0, 1.0, 1.0, 1.0],
-      rotation: Math.PI / 4
+  var mass = 0;
+  var inertia = boxShape.inertia;
+  inertia = mathDevice.v3ScalarMul(inertia, mass);
+  var boxBody = physicsDevice.createRigidBody({
+    shape: boxShape,
+    mass: mass,
+    inertia: inertia,
+    transform: mathDevice.m43BuildTranslation(0.0, 1.0, 0.0),
+    friction: 0.5,
+    restitution: 0.3,
+    angularDamping: 0.9,
+    frozen: false
   });
 
-  var PI2 = Math.PI * 2;
-  var rotateAngle = PI2 / 60;
-
-  function tick() {
+  function update() {
     // Update input
     inputDevice.update();
 
+    // Resize
+    var aspectRatio = (graphicsDevice.width / graphicsDevice.height);
+    if (aspectRatio !== camera.aspectRatio) {
+      camera.aspectRatio = aspectRatio;
+      camera.updateProjectionMatrix();
+    }
+    camera.updateViewProjectionMatrix();
+
     // Update scene
     if(state.left && !state.right) {
-      sprite.rotation -= rotateAngle;
-      sprite.rotation %= PI2; // Wrap rotation at PI * 2
+      // Go left
     } else if(state.right && !state.left) {
-      sprite.rotation += rotateAngle;
-      sprite.rotation %= PI2; // Wrap rotation at 0
+      // Go right
     }
 
+    // Draw scene
+    var vp = camera.viewProjectionMatrix;
+    var transform = mathDevice.m43BuildIdentity();
+    var wvp;
     if (graphicsDevice.beginFrame()) {
-        graphicsDevice.clear(bgColor, 1.0);
-
-        draw2D.begin();
-        draw2D.drawSprite(sprite);
-        draw2D.end();
+        graphicsDevice.clear(clearColor, 1.0, 0);
 
         graphicsDevice.endFrame();
     }
   }
 
-  intervalID = TurbulenzEngine.setInterval(tick, 1000/60);
+  var AssetsRemaining = 0;
+  function loadAssets() {
+    // Put asset loading here
+  };
+  loadAssets();
+  var loadingLoop = function loadingLoopFn() {
+    if (AssetsRemaining === 0) {
+      TurbulenzEngine.clearInterval(intervalID);
+      intervalID = TurbulenzEngine.setInterval(update, 1000 / 60);
+    }
+  };
+  intervalID = TurbulenzEngine.setInterval(loadingLoop, 1000 / 10);
 
   // Create a scene destroy callback to run when the window is closed
   TurbulenzEngine.onunload = function() {
     TurbulenzEngine.clearInterval(intervalID);
+
+    boxShape = null;
+    boxBody = null;
+
+    clearColor = null;
+
+    requestHandler = null;
+
+    if (scene) {
+      scene.destroy();
+      scene = null;
+    }
+
+    camera = null;
+    effectManager = null;
+    if (textureManager) {
+      textureManager.destroy();
+      textureManager = null;
+    }
+    if (shaderManager) {
+      shaderManager.destroy();
+      shaderManager = null;
+    }
+
     TurbulenzEngine.flush();
 
     state = null;
 
-    draw2D = null;
     keyCodes = null;
+    physicsDevice = null;
+    dynamicsWorld = null;
     inputDevice = null;
+    mathDevice = null;
     graphicsDevice = null;
   };
 };
