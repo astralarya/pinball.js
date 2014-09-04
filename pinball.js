@@ -2,13 +2,39 @@
 
 TurbulenzEngine.onload = function onloadFn() {
   // allocate resources
-  var intervalID;
-  var graphicsDevice = TurbulenzEngine.createGraphicsDevice({});
+  var graphicsDeviceParameters = {};
+  var graphicsDevice = TurbulenzEngine.createGraphicsDevice(graphicsDeviceParameters);
 
+  var inputDeviceParameters = {};
+  var inputDevice = TurbulenzEngine.createInputDevice(inputDeviceParameters);
+
+  // state
+  var intervalID;
+  var state = { left: false, right: false };
+
+  // Input functions
+  var keyCodes = inputDevice.keyCodes;
+  function keyUp(key) {
+    if (key === keyCodes.LEFT) {
+      state.left = false;
+    } else if (key === keyCodes.RIGHT) {
+      state.right = false;
+    }
+  };
+  inputDevice.addEventListener("keyup", keyUp);
+  function keydown(key) {
+    if (key === keyCodes.LEFT) {
+      state.left = true;
+    } else if (key === keyCodes.RIGHT) {
+      state.right = true;
+    }
+  };
+  inputDevice.addEventListener("keydown", keydown);
+
+  // Draw scene
   var draw2D = Draw2D.create({
       graphicsDevice: graphicsDevice
   });
-
   var bgColor = [0.0, 0.0, 0.0, 1.0];
 
   var sprite = Draw2DSprite.create({
@@ -21,21 +47,30 @@ TurbulenzEngine.onload = function onloadFn() {
   });
 
   var PI2 = Math.PI * 2;
-  var rotateAngle = PI2 / 360; // 1 deg per frame
+  var rotateAngle = PI2 / 60;
 
   function tick() {
-      sprite.rotation += rotateAngle;
+    // Update input
+    inputDevice.update();
+
+    // Update scene
+    if(state.left && !state.right) {
+      sprite.rotation -= rotateAngle;
       sprite.rotation %= PI2; // Wrap rotation at PI * 2
+    } else if(state.right && !state.left) {
+      sprite.rotation += rotateAngle;
+      sprite.rotation %= PI2; // Wrap rotation at 0
+    }
 
-      if (graphicsDevice.beginFrame()) {
-          graphicsDevice.clear(bgColor, 1.0);
+    if (graphicsDevice.beginFrame()) {
+        graphicsDevice.clear(bgColor, 1.0);
 
-          draw2D.begin();
-          draw2D.drawSprite(sprite);
-          draw2D.end();
+        draw2D.begin();
+        draw2D.drawSprite(sprite);
+        draw2D.end();
 
-          graphicsDevice.endFrame();
-      }
+        graphicsDevice.endFrame();
+    }
   }
 
 
