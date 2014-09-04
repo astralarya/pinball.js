@@ -1,7 +1,7 @@
 /*{{ javascript("jslib/draw2d.js") }}*/
 
-TurbulenzEngine.onload = function onloadFn()
-{
+TurbulenzEngine.onload = function onloadFn() {
+  // allocate resources
   var intervalID;
   var graphicsDevice = TurbulenzEngine.createGraphicsDevice({});
 
