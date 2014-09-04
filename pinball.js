@@ -73,6 +73,5 @@ TurbulenzEngine.onload = function onloadFn() {
     }
   }
 
-
   intervalID = TurbulenzEngine.setInterval(tick, 1000/60);
 };
