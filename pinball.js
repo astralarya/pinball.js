@@ -2,14 +2,13 @@
 
 TurbulenzEngine.onload = function onloadFn() {
   // allocate resources
+  var intervalID;
   var graphicsDeviceParameters = {};
   var graphicsDevice = TurbulenzEngine.createGraphicsDevice(graphicsDeviceParameters);
-
   var inputDeviceParameters = {};
   var inputDevice = TurbulenzEngine.createInputDevice(inputDeviceParameters);
 
   // state
-  var intervalID;
   var state = { left: false, right: false };
 
   // Input functions
@@ -22,19 +21,20 @@ TurbulenzEngine.onload = function onloadFn() {
     }
   };
   inputDevice.addEventListener("keyup", keyUp);
-  function keydown(key) {
+  function keyDown(key) {
     if (key === keyCodes.LEFT) {
       state.left = true;
     } else if (key === keyCodes.RIGHT) {
       state.right = true;
     }
   };
-  inputDevice.addEventListener("keydown", keydown);
+  inputDevice.addEventListener("keydown", keyDown);
 
   // Draw scene
   var draw2D = Draw2D.create({
       graphicsDevice: graphicsDevice
   });
+
   var bgColor = [0.0, 0.0, 0.0, 1.0];
 
   var sprite = Draw2DSprite.create({
@@ -74,4 +74,17 @@ TurbulenzEngine.onload = function onloadFn() {
   }
 
   intervalID = TurbulenzEngine.setInterval(tick, 1000/60);
+
+  // Create a scene destroy callback to run when the window is closed
+  TurbulenzEngine.onunload = function() {
+    TurbulenzEngine.clearInterval(intervalID);
+    TurbulenzEngine.flush();
+
+    state = null;
+
+    draw2D = null;
+    keyCodes = null;
+    inputDevice = null;
+    graphicsDevice = null;
+  };
 };
