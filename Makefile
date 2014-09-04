@@ -28,7 +28,7 @@ ASSETS=
 
 MANIFEST=$(MAIN) $(ASSETS)
 
-DEBUGFILE=$(MAIN:.js=.canvas.debug.js)
+DEBUGFILE=$(MAIN:.js=.canvas.debug.html)
 JSFILE=$(MAIN:.js=.canvas.js)
 HTMLFILE=$(MAIN:.js=.canvas.html)
 
